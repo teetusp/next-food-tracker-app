@@ -1,33 +1,55 @@
-'use client';
-import React, { use, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+"use client";
+import React, { use, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Page() {
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+
   const router = useRouter();
 
-  // ฟังก์ชันจัดการการล็อกอิน
-  const handleLogin = (e: React.FormEvent) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    router.push('/dashboard');
-    console.log({
-      email,
-      password,
-    });
-    // เพิ่มโค้ดสำหรับส่งข้อมูลล็อกอินไปยังเซิร์ฟเวอร์ที่นี่
-  };
+
+    const { data, error } = await supabase
+      .from("user_tb")
+      .select(
+        "*"
+      )
+      .eq("email", email)
+      .eq("password", password
+     );
+
+    if (error) {
+      alert("พบข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง");
+      console.log(error.message);
+      return;
+    }
+
+    router.push("/dashboard");
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-500 p-4 sm:p-6">
       <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">เข้าสู่ระบบ</h1>
-        <p className="text-center text-gray-500 mb-6">กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ</p>
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
+          เข้าสู่ระบบ
+        </h1>
+        <p className="text-center text-gray-500 mb-6">
+          กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ
+        </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">อีเมล</label>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700"
+            >
+              อีเมล
+            </label>
             <input
               type="email"
               id="email"
@@ -39,7 +61,13 @@ export default function Page() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
+            <label
+              htmlFor="password"
+              id= "password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              รหัสผ่าน
+            </label>
             <input
               type="password"
               id="password"
@@ -60,9 +88,12 @@ export default function Page() {
 
         <div className="text-center mt-6">
           <span className="text-sm text-gray-600">
-            ยังไม่มีบัญชี?{' '}
+            ยังไม่มีบัญชี?{" "}
             {/* Note: In a Next.js project, you would use <Link href="/register"> and omit the 'a' tag. */}
-            <Link href="/register" className="text-purple-600 hover:text-purple-700 font-semibold transition-colors duration-300">
+            <Link
+              href="/register"
+              className="text-purple-600 hover:text-purple-700 font-semibold transition-colors duration-300"
+            >
               ลงทะเบียนที่นี่
             </Link>
           </span>
@@ -70,4 +101,4 @@ export default function Page() {
       </div>
     </div>
   );
-};
+}

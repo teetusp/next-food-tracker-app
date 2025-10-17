@@ -1,51 +1,104 @@
-'use client';
-import React, { useState, ChangeEvent } from 'react';
-import Link from 'next/link';
+"use client";
+import React, { useState, ChangeEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Page() {
-  const [foodName, setFoodName] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [mealType, setMealType] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const router = useRouter();
+  const [foodname, setFoodName] = useState<string>("");
+  const [mealtype, setMealType] = useState<string>("");
+  const [selecteddate, setSelectedDate] = useState<string>("");
+  const [food_image_file, setFoodImageFile] = useState<File | null>(null);
+  const [foodimagePreviewUrl, setFoodImagePreviewUrl] = useState<string | null>(null);
 
-  // ฟังก์ชันจัดการการอัปโหลดรูปภาพ
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  ///ฟังก์ชันเลือกรูปภาพเพื่อพรีวิวก่อนที่จะอัปโหลด
+  function handleSelectImagePreview(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+
+    setFoodImageFile(file);
+
     if (file) {
-      setImageFile(file);
-      const fileUrl = URL.createObjectURL(file);
-      setImagePreviewUrl(fileUrl);
+      setFoodImagePreviewUrl(URL.createObjectURL(file as Blob));
     }
-  };
+  }
 
-  // ฟังก์ชันจัดการการบันทึกข้อมูล
-  const handleSave = (e: React.FormEvent) => {
+  //ฟังก์ชันอัปโหลดรูปภาพ และบันทึกลงฐานข้อมูลที่ Supabase
+  async function handleUploadAndSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    console.log({
-      foodName,
-      email,
-      mealType,
-      selectedDate,
-      imageFile,
+
+    alert("อัปโหลดรูปภาพและบันทึกข้อมูล");
+
+    let image_url = "";
+    //ตรวจสอบว่ามีการเลือกรูปภาพเพื่อที่จะอัปโหลดหรือไม่
+    if (food_image_file) {
+      const new_image_flie_name = `${Date.now()}-${food_image_file?.name}`;
+      //อัปโหลดรูป
+      const { data, error } = await supabase.storage
+        .from("food_bk")
+        .upload(new_image_flie_name, food_image_file);
+
+      if (error) {
+        alert("พบข้อผิดพลาดในการอัปโหลดรูปภาพ กรุณาลองใหม่อีกครั้ง");
+        console.log(error.message);
+        return;
+      } else {
+        // get url ของรูปที่
+        const { data } = supabase.storage
+          .from("food_bk")
+          .getPublicUrl(new_image_flie_name);
+        image_url = data.publicUrl;
+      }
+    }
+
+    //--------บันทึกลงตาราง supabase---------
+    const { data, error } = await supabase.from("food_tb").insert({
+      foodname: foodname,
+      meal: mealtype,
+      fooddate_at: selecteddate,
+      food_image_url: image_url,
     });
-    // เพิ่มโค้ดสำหรับส่งข้อมูลไปยังเซิร์ฟเวอร์ที่นี่
-  };
+
+    //ตรวจสอบการบันทึกข้อมูล
+    if (error) {
+      alert("พบข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง");
+      console.log(error.message);
+      return;
+    } else {
+      alert("บันทึกข้อมูลเรียบร้อยแล้ว");
+      //clear ข้อมูลในฟอร์ม
+      setFoodName("");
+      setMealType("");
+      setSelectedDate("");
+      setFoodImageFile(null);
+      setFoodImagePreviewUrl(null);
+      //redirect กลับไปหน้า login
+      router.push("/dashboard");
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-400 to-green-500 p-4 sm:p-6">
       <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">เพิ่มอาหาร</h1>
-        <p className="text-center text-gray-500 mb-6">กรอกรายละเอียดอาหารและมื้ออาหารของคุณ</p>
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
+          เพิ่มอาหาร
+        </h1>
+        <p className="text-center text-gray-500 mb-6">
+          กรอกรายละเอียดอาหารและมื้ออาหารของคุณ
+        </p>
 
-        <form onSubmit={handleSave} className="space-y-4">
+        <form onSubmit={handleUploadAndSave} className="space-y-4">
           <div>
-            <label htmlFor="foodName" className="block text-sm font-medium text-gray-700">ชื่ออาหาร</label>
+            <label
+              htmlFor="foodname"
+              className="block text-sm font-medium text-gray-700"
+            >
+              ชื่ออาหาร
+            </label>
             <input
               type="text"
-              id="foodName"
-              value={foodName}
+              id="foodname"
+              value={foodname}
               onChange={(e) => setFoodName(e.target.value)}
               className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
               required
@@ -53,22 +106,15 @@ export default function Page() {
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">อีเมล</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="mealType" className="block text-sm font-medium text-gray-700">เลือกมื้ออาหาร</label>
+            <label
+              htmlFor="mealType"
+              className="block text-sm font-medium text-gray-700"
+            >
+              เลือกมื้ออาหาร
+            </label>
             <select
               id="mealType"
-              value={mealType}
+              value={mealtype}
               onChange={(e) => setMealType(e.target.value)}
               className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
             >
@@ -81,11 +127,16 @@ export default function Page() {
           </div>
 
           <div>
-            <label htmlFor="selectedDate" className="block text-sm font-medium text-gray-700">เลือกวันเดือนปี</label>
+            <label
+              htmlFor="selectedDate"
+              className="block text-sm font-medium text-gray-700"
+            >
+              เลือกวันเดือนปี
+            </label>
             <input
               type="date"
               id="selectedDate"
-              value={selectedDate}
+              value={selecteddate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
               required
@@ -93,13 +144,15 @@ export default function Page() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">รูปอาหาร</label>
+            <label className="block text-sm font-medium text-gray-700">
+              รูปอาหาร
+            </label>
             <div className="mt-1 flex items-center space-x-4">
               <input
                 type="file"
                 id="foodImage"
                 className="hidden"
-                onChange={handleImageChange}
+                onChange={handleSelectImagePreview}
                 accept="image/*"
               />
               <label
@@ -108,18 +161,21 @@ export default function Page() {
               >
                 เลือกรูปภาพ
               </label>
-              {imagePreviewUrl && (
+              {foodimagePreviewUrl && (
                 <img
-                  src={imagePreviewUrl}
-                  alt="Food Preview"
+                  src={foodimagePreviewUrl}
+                  alt="preview"
                   className="w-24 h-24 rounded-lg object-cover border-2 border-green-500"
                 />
               )}
             </div>
           </div>
-          
+
           <div className="flex justify-between items-center pt-4">
-            <Link href="/dashboard" className="text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors duration-300">
+            <Link
+              href="/dashboard"
+              className="text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors duration-300"
+            >
               ย้อนกลับ
             </Link>
             <button
@@ -133,5 +189,4 @@ export default function Page() {
       </div>
     </div>
   );
-};
-
+}
